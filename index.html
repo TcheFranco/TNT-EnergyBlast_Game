@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNT Energy Blast - Elite Performance Master</title>
+    <style>
+        :root {
+            --tnt-yellow: #ffea00;
+            --tnt-neon-red: #ff3333;
+            --tnt-neon-green: #39ff14;
+            --bg-dark: #0a0a0a;
+            --panel-bg: #151515;
+            --border-color: #333;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+
+        #mainWrapper {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+            height: 780px;
+        }
+
+        .side-panel {
+            width: 260px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #rightPanel { background: white; color: #111; border: 1px solid #ddd; }
+
+        h2 {
+            color: var(--tnt-yellow);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0 0 12px 0;
+            border-left: 3px solid var(--tnt-yellow);
+            padding-left: 8px;
+        }
+
+        #rightPanel h2 { color: #333; border-left-color: #333; }
+
+        .legend-grid { font-size: 10px; color: #bbb; display: grid; gap: 6px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; background: #222; padding: 6px; border-radius: 4px; border: 1px solid #333; }
+        .legend-item b { color: var(--tnt-yellow); font-size: 9px; display: block; text-transform: uppercase; }
+
+        #inventory { flex-grow: 1; overflow-y: auto; margin-top: 5px; }
+        .inventory-item {
+            display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px;
+            padding: 6px; background: #f4f4f4; border-radius: 4px; border: 1px solid #eee;
+        }
+
+        #gameContainer { position: relative; width: 1000px; background: #000; border-radius: 12px; overflow: hidden; border: 2px solid #222; }
+        canvas { display: block; }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.96); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100; text-align: center;
+        }
+
+        .btn-tnt {
+            background: var(--tnt-yellow); color: black; border: none; padding: 18px 45px;
+            font-size: 22px; font-weight: 900; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+        }
+
+        #energyBarContainer { width: 200px; height: 10px; background: #222; margin-top: 8px; border-radius: 5px; overflow: hidden; }
+        #energyBarFill { height: 100%; background: var(--tnt-yellow); width: 100%; transition: width 0.3s; }
+
+        .ui-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1px;}
+        .ui-value { font-size: 26px; font-weight: 900; }
+
+        #benefitImg { max-width: 120px; max-height: 160px; margin-bottom: 10px; display: none; }
+        #benefitName { font-size: 14px; font-weight: 800; text-align: center; }
+        
+        .tutorial-text {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            background: #111;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .tutorial-text b { color: var(--tnt-yellow); }
+    </style>
+</head>
+<body>
+
+<div id="mainWrapper">
+    <div class="side-panel">
+        <h2>Guia de Arsenal</h2>
+        <div class="legend-grid">
+            <div class="legend-item"><span>🫐</span><div><b>TNT Açaí com Guaraná</b> Tiro 4x Reto</div></div>
+            <div class="legend-item"><span>🍏</span><div><b>TNT Maçã Verde</b> Tiro 3x Aberto</div></div>
+            <div class="legend-item"><span>🍊</span><div><b>TNT Tangerina</b> 3 Tiros Explosivos</div></div>
+            <div class="legend-item"><span>🍋</span><div><b>TNT Focus Pink Lemonade</b> Congela Queda</div></div>
+            <div class="legend-item"><span>🥭</span><div><b>TNT Mango Summer</b> Nuke na Tela</div></div>
+            <div class="legend-item"><span>🏀</span><div><b>TNT Original</b> Super Cura</div></div>
+            <div class="legend-item"><span>⚫</span><div><b>TNT Original Zero</b> Zero Danos Recebidos</div></div>
+            <div class="legend-item"><span>👁️</span><div><b>TNT Focus Fantasy</b> Desaceleração Temporária</div></div>
+        </div>
+        <div style="margin-top: auto; background: #222; padding: 12px; border-radius: 8px; border: 1px solid #333;">
+            <div class="ui-label">Dificuldade Atual</div>
+            <div id="lvlDisplay" style="color:var(--tnt-yellow); font-weight:bold; font-size:18px;">Nível 1</div>
+        </div>
+    </div>
+
+    <div id="gameContainer">
+        <div id="ui" style="position: absolute; top: 25px; left: 25px; right: 25px; display: flex; justify-content: space-between; z-index: 10; pointer-events: none;">
+            <div>
+                <div class="ui-label">Tempo de Sobrevivência</div>
+                <div id="scoreDisplay" class="ui-value">0s</div>
+                <div id="energyBarContainer"><div id="energyBarFill"></div></div>
+            </div>
+            <div style="text-align: right;">
+                <div class="ui-label">Melhor Tempo</div>
+                <div id="highScoreDisplay" class="ui-value" style="color:var(--tnt-yellow)">0s</div>
+            </div>
+        </div>
+
+        <div id="startScreen" class="overlay">
+            <h1 style="color:var(--tnt-yellow); font-size:45px; margin-bottom:20px; font-weight: 900;">TNT ENERGY BLAST</h1>
+            
+            <div class="tutorial-text">
+                <div><b>⬅️ ➡️</b> Mover</div>
+                <div><b>[ ESPAÇO ]</b> Atirar</div>
+            </div>
+
+            <button class="btn-tnt" onclick="startGame()">Carregar Missão</button>
+        </div>
+
+        <div id="gameOverScreen" class="overlay" style="display: none;">
+            <div class="ui-label">Sua Performance</div>
+            <div id="finalScore" style="font-size: 70px; font-weight: 900; color: var(--tnt-yellow);">0s</div>
+            <h1 style="margin:10px 0 5px 0;">PERDEU O FOCO?</h1>
+            <p style="color: #888; font-size: 14px; margin: 0 0 25px 0;">Reponha suas energias com um TNT e</p>
+            <button class="btn-tnt" onclick="resetGame()">Tente Novamente</button>
+        </div>
+
+        <canvas id="gameCanvas" width="1000" height="750"></canvas>
+    </div>
+
+    <div id="rightPanel" class="side-panel">
+        <h2>Boost Ativo</h2>
+        <div id="benefitDisplay" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:180px; border-bottom:1px solid #eee; padding-bottom: 15px;">
+            <img id="benefitImg" src="">
+            <div id="benefitName" style="color:#888;">Nenhum</div>
+            <div id="benefitTimer" style="font-size:12px; color:#aaa; margin-top:5px;"></div>
+        </div>
+        
+        <div style="margin-top: 15px; padding: 5px 0;">
+            <div class="ui-label" style="color: #333;">Total Coletado</div>
+            <div id="totalItemsDisplay" style="font-size: 20px; font-weight: 900; color: #111;">0</div>
+        </div>
+        
+        <div id="inventory"></div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const assetsConfig = {
+    player: 'https://gpexecucao.com.br/uploads/library/754-p24042211.png',
+    '🧋': { src: 'https://gpexecucao.com.br/uploads/library/710-p25040117.png', name: 'Açaí com Guaraná', weapon: 'quad' },
+    '🍏': { src: 'https://gpexecucao.com.br/uploads/library/712-p25040146.png', name: 'Maçã Verde', weapon: 'wide' },
+    '🍊': { src: 'https://gpexecucao.com.br/uploads/library/711-p25040150.png', name: 'Tangerina', weapon: 'splash_triple' },
+    '🏀_black': { src: 'https://i.imgur.com/wg6j8sm.png', name: 'Original Zero', status: 'invincible' },
+    '🏀_orange': { src: 'https://i.imgur.com/KpoFXE7.png', name: 'Original NBA', status: 'mega_heal' },
+    '🥭': { src: 'https://gpexecucao.com.br/uploads/library/535-p25040154.png', name: 'Mango Summer', status: 'nuke' },
+    '🍋': { src: 'https://i.imgur.com/EkqLkBZ.png', name: 'Focus Pink Lemonade', status: 'freeze' },
+    '👁️': { src: 'https://i.imgur.com/boBlar7.png', name: 'Focus Fantasy', status: 'slow' }
+};
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, duration, vol=0.1) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+let images = {};
+function preloadImages() {
+    Object.keys(assetsConfig).forEach(k => {
+        const img = new Image();
+        img.src = (k === 'player') ? assetsConfig[k] : assetsConfig[k].src;
+        img.onload = () => { images[k] = img; };
+        img.onerror = () => { console.error("Falha ao carregar:", k); };
+    });
+}
+preloadImages();
+
+let gameRunning = false, score = 0, energy = 100, difficulty = 1, startTime = 0, timeScale = 1;
+let highScore = 0, totalItems = 0, freezeTime = 0;
+let player, bullets, enemies, powerUps, explosions, keys = {}, inventory = {};
+
+const enemyList = ['📚','💼','🏋️','🍳','🧹'];
+
+class Player {
+    constructor() { 
+        this.x = 465; this.y = 640; this.w = 70; this.h = 85; 
+        this.weapon = 'normal'; this.status = null; 
+        this.weaponTimer = 0; this.statusTimer = 0; 
+    }
+    draw() {
+        if (!images.player) return;
+        ctx.save();
+        if (this.status === 'invincible' && Math.floor(Date.now()/100)%2==0) {
+            ctx.filter = "hue-rotate(240deg) saturate(3)"; 
+        }
+        ctx.drawImage(images.player, this.x, this.y, this.w, this.h);
+        ctx.restore();
+    }
+    update() {
+        if (keys['ArrowLeft'] && this.x > 0) this.x -= 14;
+        if (keys['ArrowRight'] && this.x < canvas.width - this.w) this.x += 14;
+        if (this.weaponTimer > 0) { this.weaponTimer--; if (this.weaponTimer <= 0) this.weapon = 'normal'; }
+        if (this.statusTimer > 0) {
+            this.statusTimer--;
+            document.getElementById('benefitTimer').innerText = `${Math.ceil(this.statusTimer/60)}s`;
+            if (this.statusTimer <= 0) this.resetStatus();
+        }
+    }
+    resetStatus() {
+        this.status = null; timeScale = 1;
+        document.getElementById('benefitImg').style.display='none';
+        document.getElementById('benefitName').innerText = "Nenhum";
+    }
+}
+
+class Enemy {
+    constructor() {
+        this.icon = enemyList[Math.floor(Math.random()*5)];
+        this.x = Math.random()*940; this.y = -70; this.size = 65;
+        this.speed = (3.5 + (difficulty * 0.45));
+    }
+    draw() {
+        ctx.fillStyle = "rgba(255,50,50,0.2)"; ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 3; ctx.strokeRect(this.x, this.y, this.size, this.size);
+        ctx.font = '42px serif'; ctx.textAlign = 'center'; ctx.fillStyle = "white";
+        ctx.fillText(this.icon, this.x + 32, this.y + 48);
+    }
+    update() { if (freezeTime > 0) return false; this.y += this.speed * timeScale; return this.y > 750; }
+}
+
+class Explosion {
+    constructor(x, y, power=1) { this.x = x; this.y = y; this.life = 12; this.power = power; }
+    draw() {
+        ctx.font = (this.power > 1 ? '70px' : '45px') + ' serif'; ctx.textAlign = 'center';
+        ctx.fillText('💥', this.x, this.y + 15);
+        this.life--;
+    }
+}
+
+class PowerUp {
+    constructor() {
+        const ids = Object.keys(assetsConfig).filter(k=>k!=='player');
+        this.id = ids[Math.floor(Math.random()*ids.length)];
+        this.x = Math.random()*940; this.y = -90;
+        this.w = 75; this.h = 90;
+    }
+    draw() {
+        if (!images[this.id]) return;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#39ff14";
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+        ctx.drawImage(images[this.id], this.x+5, this.y+5, this.w-10, this.h-10);
+    }
+    update() { this.y += 4 * timeScale; return this.y > 750; }
+}
+
+function applyPowerUp(p) {
+    const cfg = assetsConfig[p.id];
+    inventory[cfg.name] = (inventory[cfg.name] || 0) + 1;
+    totalItems++;
+    updateInventoryUI();
+    playTone(600, 'triangle', 0.2, 0.15);
+    document.getElementById('benefitImg').src = cfg.src;
+    document.getElementById('benefitImg').style.display = 'block';
+    document.getElementById('benefitName').innerText = cfg.name;
+    document.getElementById('benefitName').style.color = "#111";
+
+    if (cfg.weapon) { player.weapon = cfg.weapon; player.weaponTimer = 600; }
+    if (cfg.status) {
+        if (cfg.status === 'nuke') {
+            enemies.forEach(e => explosions.push(new Explosion(e.x+32, e.y+32)));
+            enemies = []; playTone(100, 'sawtooth', 0.5, 0.2);
+        } else if (cfg.status === 'mega_heal') { energy = Math.min(100, energy + 50);
+        } else if (cfg.status === 'invincible') { player.status = 'invincible'; player.statusTimer = 600; // Alterado para 10 segundos
+        } else if (cfg.status === 'slow') { player.status = 'slow'; player.statusTimer = 600; timeScale = 0.5;
+        } else if (cfg.status === 'freeze') { player.status = 'freeze'; player.statusTimer = 180; freezeTime = 180; }
+    }
+    energy = Math.min(100, energy + 12);
+    updateUI();
+}
+
+function updateInventoryUI() {
+    document.getElementById('totalItemsDisplay').innerText = totalItems;
+    const div = document.getElementById('inventory');
+    div.innerHTML = Object.entries(inventory).map(([name, qty]) => `<div class="inventory-item"><span>🥤</span> <b>${qty}x</b> ${name}</div>`).join('');
+}
+
+function updateUI() {
+    document.getElementById('energyBarFill').style.width = energy + '%';
+    document.getElementById('energyBarFill').style.background = energy > 50 ? '#ffea00' : (energy > 25 ? 'orange' : '#ff3333');
+    document.getElementById('scoreDisplay').innerText = Math.max(0, score) + 's';
+    document.getElementById('lvlDisplay').innerText = "Nível " + difficulty;
+    document.getElementById('highScoreDisplay').innerText = highScore + 's';
+}
+
+function startGame() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('startScreen').style.display = 'none';
+    player = new Player(); bullets = []; enemies = []; powerUps = []; explosions = [];
+    energy = 100; score = 0; difficulty = 1; inventory = {}; totalItems = 0; freezeTime = 0;
+    gameRunning = true; startTime = 0; updateInventoryUI(); updateUI();
+    requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+    gameRunning = false;
+    playTone(60, 'sawtooth', 0.8, 0.3);
+    if (score > highScore) highScore = score;
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('finalScore').innerText = score + 's';
+}
+
+function resetGame() { document.getElementById('gameOverScreen').style.display = 'none'; startGame(); }
+
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space' && gameRunning) {
+        playTone(400, 'sine', 0.1, 0.05);
+        if (player.weapon === 'quad') {
+            [5, 25, 45, 65].forEach(ox => bullets.push({x: player.x+ox, y: player.y, vx: 0, type: 'normal'}));
+        } else if (player.weapon === 'wide') {
+            bullets.push({x: player.x+35, y: player.y, vx: 0, type: 'normal'});
+            bullets.push({x: player.x+15, y: player.y+10, vx: -4.5, type: 'normal'});
+            bullets.push({x: player.x+55, y: player.y+10, vx: 4.5, type: 'normal'});
+        } else if (player.weapon === 'splash_triple') {
+            bullets.push({x: player.x+35, y: player.y, vx: 0, type: 'explosive'});
+            bullets.push({x: player.x-15, y: player.y+20, vx: 0, type: 'explosive'});
+            bullets.push({x: player.x+85, y: player.y+20, vx: 0, type: 'explosive'});
+        } else {
+            bullets.push({x: player.x+35, y: player.y, vx: 0, type: 'normal'});
+            if (player.status === 'slow') {
+                bullets.push({x: player.x+15, y: player.y+15, vx: -2, type: 'normal'});
+                bullets.push({x: player.x+55, y: player.y+15, vx: 2, type: 'normal'});
+            }
+        }
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function gameLoop(t) {
+    if (!gameRunning) return;
+    if (startTime === 0) startTime = t;
+    ctx.clearRect(0,0,1000,750);
+    score = Math.floor((t - startTime)/1000);
+    difficulty = 1 + Math.floor(score / 15);
+    if (freezeTime > 0) freezeTime--;
+    updateUI();
+
+    player.update(); player.draw();
+    if (Math.random() < (0.02 + (difficulty * 0.007))) enemies.push(new Enemy());
+    if (Math.random() < 0.007) powerUps.push(new PowerUp());
+
+    bullets.forEach((b,i) => {
+        b.x += b.vx; b.y -= 14;
+        ctx.font = '32px serif'; ctx.textAlign = 'center'; ctx.fillText('🧨', b.x, b.y);
+        enemies.forEach((e, ei) => {
+            if (b.x > e.x-10 && b.x < e.x+e.size+10 && b.y > e.y-10 && b.y < e.y+e.size+10) {
+                explosions.push(new Explosion(e.x+e.size/2, e.y+e.size/2, b.type==='explosive'?2:1));
+                if (b.type === 'explosive') {
+                    enemies.forEach((en, eni) => {
+                        if (Math.hypot(e.x - en.x, e.y - en.y) < 180) {
+                            setTimeout(() => explosions.push(new Explosion(en.x+32, en.y+32)), 60);
+                            enemies.splice(eni, 1);
+                        }
+                    });
+                }
+                enemies.splice(ei, 1); bullets.splice(i, 1);
+                playTone(180, 'sine', 0.1, 0.1);
+            }
+        });
+        if (b.y < -50) bullets.splice(i, 1);
+    });
+
+    enemies.forEach((e,i) => {
+        if (e.update()) { 
+            // Proteção contra dano de fuga adicionada aqui
+            if (player.status !== 'invincible') { energy -= 15; playTone(90, 'square', 0.2); }
+            enemies.splice(i, 1); 
+        } else {
+            e.draw();
+            if (player.x < e.x+e.size && player.x+player.w > e.x && player.y < e.y+e.size && player.y+player.h > e.y) {
+                if (player.status !== 'invincible') { energy -= 20; playTone(90, 'square', 0.2); }
+                enemies.splice(i, 1);
+            }
+        }
+    });
+
+    powerUps.forEach((p,i) => {
+        if (p.update()) powerUps.splice(i,1);
+        p.draw();
+        if (player.x < p.x+p.w && player.x+player.w > p.x && player.y < p.y+p.h && player.y+player.h > p.y) {
+            applyPowerUp(p); powerUps.splice(i, 1);
+        }
+    });
+
+    explosions.forEach((ex,i) => { ex.draw(); if(ex.life<=0) explosions.splice(i,1); });
+    if (energy <= 0) gameOver();
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
