@@ -26,6 +26,7 @@
             overflow: hidden;
             user-select: none; 
             -webkit-user-select: none;
+            touch-action: none; /* Evita scroll ou pull-to-refresh indesejado no mobile */
         }
 
         #mainWrapper {
@@ -33,6 +34,8 @@
             gap: 15px;
             align-items: stretch;
             height: 780px;
+            transform-origin: center center;
+            transition: transform 0.3s ease;
         }
 
         .side-panel {
@@ -103,7 +106,6 @@
         }
         .tutorial-text b { color: var(--tnt-yellow); }
 
-        /* AJUSTE: CONTROLES MOBILE RECUADOS */
         #mobileControls {
             display: none; 
             position: absolute; 
@@ -113,25 +115,38 @@
             height: 100px; 
             pointer-events: none; 
             z-index: 50; 
-            padding: 0 150px; /* Aumentado para trazer os controles para dentro */
+            padding: 0 100px; 
             box-sizing: border-box; 
             justify-content: space-between; 
             align-items: center;
         }
-        .mobile-btn {
-            width: 75px; height: 75px; background: rgba(255, 234, 0, 0.15);
+        
+        /* NOVO CSS PARA O JOYSTICK */
+        #joystickBase {
+            width: 110px; height: 110px; background: rgba(255, 234, 0, 0.15);
             border: 2px solid rgba(255, 234, 0, 0.5); border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 32px; color: var(--tnt-yellow); cursor: pointer;
-            backdrop-filter: blur(4px); transition: all 0.1s; pointer-events: auto;
+            position: relative; pointer-events: auto; touch-action: none;
         }
-        .mobile-btn:active { background: rgba(255, 234, 0, 0.4); transform: scale(0.92); border-color: var(--tnt-yellow); }
+        
+        #joystickKnob {
+            width: 50px; height: 50px; background: var(--tnt-yellow);
+            border-radius: 50%; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); pointer-events: none;
+            box-shadow: 0 0 15px rgba(255, 234, 0, 0.5); transition: background 0.1s;
+        }
+
+        .mobile-btn {
+            pointer-events: auto;
+        }
         
         .fire-btn {
             width: 95px; height: 95px; background: rgba(255, 51, 51, 0.15);
             border-color: rgba(255, 51, 51, 0.5); color: var(--tnt-neon-red); font-size: 40px;
+            border: 2px solid rgba(255, 51, 51, 0.5); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(4px); transition: all 0.1s; cursor: pointer;
         }
-        .fire-btn:active { background: rgba(255, 51, 51, 0.4); border-color: var(--tnt-neon-red); }
+        .fire-btn:active { background: rgba(255, 51, 51, 0.4); border-color: var(--tnt-neon-red); transform: scale(0.92); }
 
         .device-btn-group { display: flex; gap: 20px; margin-top: 20px; }
         .btn-device { padding: 15px 30px; font-size: 18px; border-radius: 8px; }
@@ -190,8 +205,8 @@
             </div>
 
             <div class="tutorial-text" id="tutorialMobile" style="display: none; flex-direction: column; gap: 15px;">
-                <div><b>🕹️ DIRECIONAIS</b> Dedão esquerdo para Mover</div>
-                <div><b>🎯 BOTÃO DE AÇÃO</b> Dedão direito para Atirar</div>
+                <div><b>🕹️ JOYSTICK</b> Arraste para os lados para Mover</div>
+                <div><b>🎯 BOTÃO DE AÇÃO</b> Pressione para Atirar</div>
             </div>
 
             <button class="btn-tnt" onclick="startGame()">Carregar Missão</button>
@@ -206,9 +221,9 @@
         </div>
 
         <div id="mobileControls">
-            <div style="display: flex; gap: 20px;">
-                <div id="btnLeft" class="mobile-btn">◀</div>
-                <div id="btnRight" class="mobile-btn">▶</div>
+            <!-- JOYSTICK -->
+            <div id="joystickBase">
+                <div id="joystickKnob"></div>
             </div>
             <div>
                 <div id="btnFire" class="mobile-btn fire-btn">💥</div>
@@ -278,6 +293,28 @@ let highScore = 0, totalItems = 0, freezeTime = 0;
 let player, bullets, enemies, powerUps, explosions, keys = {}, inventory = {};
 let isMobile = false;
 
+// VARIAVEIS DO JOYSTICK
+let joystickValueX = 0; // Vai de -1 (esquerda) a 1 (direita)
+let joystickActive = false;
+
+// FUNÇÃO PARA REDIMENSIONAR TELA NO MOBILE
+function resizeGame() {
+    const wrapper = document.getElementById('mainWrapper');
+    if (isMobile) {
+        // Calcula a proporção para caber na tela mantendo proporções do container
+        const targetWidth = 1550; // Largura aproximada dos painéis somados (260+1000+260 + gaps)
+        const targetHeight = 780;
+        const scaleX = window.innerWidth / targetWidth;
+        const scaleY = window.innerHeight / targetHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.95; // 0.95 dá uma margem segura
+        
+        wrapper.style.transform = `scale(${scale})`;
+    } else {
+        wrapper.style.transform = 'scale(1)';
+    }
+}
+window.addEventListener('resize', resizeGame);
+
 function selectDevice(type) {
     document.getElementById('deviceScreen').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex';
@@ -286,11 +323,13 @@ function selectDevice(type) {
         document.getElementById('tutorialPC').style.display = 'none';
         document.getElementById('tutorialMobile').style.display = 'flex';
         document.getElementById('mobileControls').style.display = 'flex';
+        resizeGame(); // Aciona escala da tela celular
     } else {
         isMobile = false;
         document.getElementById('tutorialPC').style.display = 'flex';
         document.getElementById('tutorialMobile').style.display = 'none';
         document.getElementById('mobileControls').style.display = 'none';
+        resizeGame(); // Volta ao normal
     }
 }
 
@@ -310,8 +349,19 @@ class Player {
         ctx.restore();
     }
     update() {
-        if (keys['ArrowLeft'] && this.x > 0) this.x -= 14;
-        if (keys['ArrowRight'] && this.x < canvas.width - this.w) this.x += 14;
+        let dx = 0;
+        const speed = 14;
+
+        if (keys['ArrowLeft']) dx = -speed;
+        if (keys['ArrowRight']) dx = speed;
+        if (isMobile && joystickValueX !== 0) dx = speed * joystickValueX;
+
+        this.x += dx;
+        
+        // Impede que o jogador saia das bordas
+        if (this.x < 0) this.x = 0;
+        if (this.x > canvas.width - this.w) this.x = canvas.width - this.w;
+
         if (this.weaponTimer > 0) { this.weaponTimer--; if (this.weaponTimer <= 0) this.weapon = 'normal'; }
         if (this.statusTimer > 0) {
             this.statusTimer--;
@@ -411,6 +461,7 @@ function startGame() {
     document.getElementById('startScreen').style.display = 'none';
     player = new Player(); bullets = []; enemies = []; powerUps = []; explosions = [];
     energy = 100; score = 0; difficulty = 1; inventory = {}; totalItems = 0; freezeTime = 0;
+    joystickValueX = 0;
     gameRunning = true; startTime = 0; updateInventoryUI(); updateUI();
     requestAnimationFrame(gameLoop);
 }
@@ -443,24 +494,48 @@ function fireWeapon() {
     }
 }
 
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    if (e.code === 'Space') fireWeapon();
-});
-window.addEventListener('keyup', e => keys[e.code] = false);
+// LOGICA DO JOYSTICK
+const joystickBase = document.getElementById('joystickBase');
+const joystickKnob = document.getElementById('joystickKnob');
+let baseRect;
 
-function setupMobileControl(elementId, keyCode) {
-    const el = document.getElementById(elementId);
-    const start = (e) => { e.preventDefault(); keys[keyCode] = true; };
-    const end = (e) => { e.preventDefault(); keys[keyCode] = false; };
-    el.addEventListener('mousedown', start);
-    el.addEventListener('touchstart', start);
-    el.addEventListener('mouseup', end);
-    el.addEventListener('touchend', end);
+function handleJoystickMove(e) {
+    if (!joystickActive) return;
+    e.preventDefault();
+    let touch = e.touches[0];
+    if (!touch) return;
+
+    // Calcula a posição de X baseado no centro da base do joystick
+    let x = touch.clientX - baseRect.left - (baseRect.width / 2);
+    let maxDist = baseRect.width / 2;
+    
+    // Limita o botão visualmente na borda do Joystick
+    if (x > maxDist) x = maxDist;
+    if (x < -maxDist) x = -maxDist;
+
+    // Define de -1 a 1 a intensidade
+    joystickValueX = x / maxDist;
+    joystickKnob.style.transform = `translate(calc(-50% + ${x}px), -50%)`;
 }
 
-setupMobileControl('btnLeft', 'ArrowLeft');
-setupMobileControl('btnRight', 'ArrowRight');
+joystickBase.addEventListener('touchstart', (e) => {
+    joystickActive = true;
+    baseRect = joystickBase.getBoundingClientRect();
+    joystickKnob.style.background = '#fff';
+    handleJoystickMove(e);
+});
+joystickBase.addEventListener('touchmove', handleJoystickMove, { passive: false });
+joystickBase.addEventListener('touchend', (e) => {
+    joystickActive = false;
+    joystickValueX = 0;
+    joystickKnob.style.transform = `translate(-50%, -50%)`;
+    joystickKnob.style.background = 'var(--tnt-yellow)';
+});
+
+// LOGICA DO TECLADO E BOTÃO DE TIRO
+window.addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') fireWeapon(); });
+window.addEventListener('keyup', e => keys[e.code] = false);
+
 document.getElementById('btnFire').addEventListener('touchstart', (e) => { e.preventDefault(); fireWeapon(); });
 document.getElementById('btnFire').addEventListener('mousedown', (e) => { e.preventDefault(); fireWeapon(); });
 
